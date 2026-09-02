@@ -1,10 +1,12 @@
 package org.calcfx.app.ui.components
 
 import android.widget.Toast
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,7 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -49,6 +53,7 @@ fun DisplayScreen(
     hasMemory: Boolean,
     onSeekCursor: (Int) -> Unit = {},
     onPasteText: (String) -> Unit = {},
+    onSwipeDelete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -57,29 +62,66 @@ fun DisplayScreen(
     val accent = LocalAppAccent.current
     var showContextMenu by remember { mutableStateOf(false) }
 
+    // Pulsing cursor animation
+    val infiniteTransition = rememberInfiniteTransition(label = "cursorBlink")
+    val cursorAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.95f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(550, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cursorAlpha"
+    )
+
     // Auto-scroll input toward cursor position
     LaunchedEffect(expression, cursorPosition) {
-        // Estimate pixel offset based on cursor position ratio
         val ratio = if (expression.isNotEmpty()) cursorPosition.toFloat() / expression.length else 1f
         val targetScroll = (scrollState.maxValue * ratio).toInt()
         scrollState.scrollTo(targetScroll)
     }
+
+    var totalDrag by remember { mutableFloatStateOf(0f) }
 
     Box(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(24.dp))
-                .background(AmoledDisplayBg)
-                .border(1.dp, AmoledDisplayBorder, RoundedCornerShape(24.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF10141F), Color(0xFF07090E))
+                    )
+                )
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(
+                        listOf(AmoledDisplayBorder.copy(alpha = 0.8f), Color(0xFF161A26))
+                    ),
+                    RoundedCornerShape(24.dp)
+                )
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { totalDrag = 0f },
+                        onDragEnd = {
+                            if (totalDrag < -60f) {
+                                onSwipeDelete()
+                            }
+                            totalDrag = 0f
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            totalDrag += dragAmount
+                        }
+                    )
+                }
                 .combinedClickable(
                     onClick = {},
                     onLongClick = { showContextMenu = true }
                 )
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // --- 1. Top Minimal Status Badges ---
+            // --- 1. Top Status Bar with Polished Badges ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -96,7 +138,7 @@ fun DisplayScreen(
                 }
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val angleLabel = when (angleUnit) {
@@ -104,32 +146,20 @@ fun DisplayScreen(
                         AngleUnit.RADIAN -> "RAD"
                         AngleUnit.GRADIAN -> "GRA"
                     }
-                    Text(
-                        text = angleLabel,
-                        color = accent,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                    MinimalPill(angleLabel, accent)
+
                     if (mode != CalculatorMode.COMP) {
-                        Text(
-                            text = mode.name,
-                            color = AccentPurple,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
+                        MinimalPill(mode.name, AccentPurple)
                     }
                 }
             }
 
-            // --- 2. Minimalist Formula Input Line ---
+            // --- 2. Formula Input Line with Smooth Pulsing Cursor ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(scrollState)
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 2.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 val annotatedText = buildAnnotatedString {
@@ -137,10 +167,10 @@ fun DisplayScreen(
                     val pos = cursorPosition.coerceIn(0, text.length)
 
                     append(text.substring(0, pos))
-                    // Glowing dynamic accent cursor
+                    // Pulsing animated cursor
                     withStyle(
                         style = SpanStyle(
-                            background = accent.copy(alpha = 0.45f),
+                            background = accent.copy(alpha = cursorAlpha),
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
@@ -158,15 +188,15 @@ fun DisplayScreen(
                     onClick = { offset -> onSeekCursor(offset) },
                     style = TextStyle(
                         color = AmoledInputText,
-                        fontSize = 26.sp,
+                        fontSize = 25.sp,
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.Normal,
-                        lineHeight = 32.sp
+                        lineHeight = 30.sp
                     )
                 )
             }
 
-            // --- 3. Prominent Minimalist Result Display in Dynamic Accent ---
+            // --- 3. Result Display in Dynamic Accent ---
             val displayOutput = formattedResult.ifEmpty { resultPreview }
 
             Column(
@@ -186,7 +216,7 @@ fun DisplayScreen(
                 Text(
                     text = displayOutput.ifEmpty { "0" },
                     color = if (displayOutput.contains("ERROR")) AccentCoral else accent,
-                    fontSize = 38.sp,
+                    fontSize = if (displayOutput.length > 12) 28.sp else if (displayOutput.length > 8) 32.sp else 38.sp,
                     fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.End,
@@ -244,16 +274,17 @@ private fun MinimalPill(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(color.copy(alpha = 0.15f))
-            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .background(color.copy(alpha = 0.12f))
+            .border(0.8.dp, color.copy(alpha = 0.45f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 7.dp, vertical = 2.dp)
     ) {
         Text(
             text = text,
             color = color,
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.4.sp
         )
     }
 }

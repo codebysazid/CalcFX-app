@@ -1,9 +1,14 @@
 package org.calcfx.app.ui.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,11 +16,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +69,8 @@ fun Keypad(
 
         // --- 2. Complete Scientific Function Block (4 Rows, 6 Columns) ---
         ScientificFunctionSection(
+            isShiftActive = isShiftActive,
+            isAlphaActive = isAlphaActive,
             onKeyPress = onKeyPress,
             modifier = Modifier
                 .fillMaxWidth()
@@ -71,6 +79,8 @@ fun Keypad(
 
         // --- 3. Numeric & Arithmetic Block (4 Rows, 5 Columns with Floating Squircles) ---
         NumericPadSection(
+            isShiftActive = isShiftActive,
+            isAlphaActive = isAlphaActive,
             onKeyPress = onKeyPress,
             modifier = Modifier
                 .fillMaxWidth()
@@ -189,12 +199,21 @@ private fun MinimalPillButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "pillScale"
+    )
+
     Box(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(14.dp))
             .background(if (isActive) activeBg else inactiveBg)
             .border(BorderStroke(0.8.dp, borderColor), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick),
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -213,12 +232,21 @@ private fun MinimalNavButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "navScale"
+    )
+
     Box(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(14.dp))
             .background(AmoledFunctionKey)
             .border(BorderStroke(0.8.dp, AmoledCardBorder), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick),
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         icon()
@@ -227,6 +255,8 @@ private fun MinimalNavButton(
 
 @Composable
 private fun ScientificFunctionSection(
+    isShiftActive: Boolean,
+    isAlphaActive: Boolean,
     onKeyPress: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -274,15 +304,17 @@ private fun ScientificFunctionSection(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        KeyRowFlex(row1, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
-        KeyRowFlex(row2, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
-        KeyRowFlex(row3, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
-        KeyRowFlex(row4, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
+        KeyRowFlex(row1, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
+        KeyRowFlex(row2, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
+        KeyRowFlex(row3, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
+        KeyRowFlex(row4, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
     }
 }
 
 @Composable
 private fun NumericPadSection(
+    isShiftActive: Boolean,
+    isAlphaActive: Boolean,
     onKeyPress: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -319,16 +351,18 @@ private fun NumericPadSection(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        KeyRowFlex(row1, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
-        KeyRowFlex(row2, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
-        KeyRowFlex(row3, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
-        KeyRowFlex(row4, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
+        KeyRowFlex(row1, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
+        KeyRowFlex(row2, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
+        KeyRowFlex(row3, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
+        KeyRowFlex(row4, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
     }
 }
 
 @Composable
 private fun KeyRowFlex(
     keys: List<KeyModel>,
+    isShiftActive: Boolean,
+    isAlphaActive: Boolean,
     onKeyPress: (String) -> Unit,
     modifier: Modifier = Modifier,
     isScientific: Boolean = false
@@ -340,6 +374,8 @@ private fun KeyRowFlex(
         for (k in keys) {
             MinimalCalculatorButton(
                 key = k,
+                isShiftActive = isShiftActive,
+                isAlphaActive = isAlphaActive,
                 onClick = { onKeyPress(k.keyAction) },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 isScientific = isScientific
@@ -351,11 +387,25 @@ private fun KeyRowFlex(
 @Composable
 private fun MinimalCalculatorButton(
     key: KeyModel,
+    isShiftActive: Boolean,
+    isAlphaActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isScientific: Boolean = false
 ) {
     val accent = LocalAppAccent.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Tactile spring press scale physics
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "btnScale"
+    )
 
     val bg = when {
         key.isEquals -> accent
@@ -379,11 +429,12 @@ private fun MinimalCalculatorButton(
 
     Column(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .semantics { contentDescription = key.primaryText }
             .clip(RoundedCornerShape(cornerRadius))
             .background(bg)
             .border(BorderStroke(0.6.dp, AmoledCardBorder), RoundedCornerShape(cornerRadius))
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 3.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
@@ -391,36 +442,46 @@ private fun MinimalCalculatorButton(
         // Shift / Alpha subtle indicator hints
         if (key.shiftText != null || key.alphaText != null) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 1.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 3.dp, vertical = 1.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = key.shiftText ?: "",
-                    color = AccentGold.copy(alpha = 0.90f),
-                    fontSize = 7.5.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    color = if (isShiftActive) AccentGold else AccentGold.copy(alpha = 0.90f),
+                    fontSize = 8.sp,
+                    fontWeight = if (isShiftActive) FontWeight.Black else FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
                     text = key.alphaText ?: "",
-                    color = AccentCoral.copy(alpha = 0.90f),
-                    fontSize = 7.5.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    color = if (isAlphaActive) AccentCoral else AccentCoral.copy(alpha = 0.90f),
+                    fontSize = 8.sp,
+                    fontWeight = if (isAlphaActive) FontWeight.Black else FontWeight.Bold,
                     maxLines = 1
                 )
             }
         } else {
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
-        Text(
-            text = key.primaryText,
-            color = txtColor,
-            fontSize = if (key.primaryText.length > 4) 10.sp else if (key.primaryText.length > 2) 11.5.sp else if (key.isNumber || key.isOperator || key.isEquals) 20.sp else 14.sp,
-            fontWeight = if (key.isNumber || key.isOperator || key.isEquals) FontWeight.Bold else FontWeight.Medium,
-            textAlign = TextAlign.Center
-        )
+        // Primary Label perfectly vertically centered
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = key.primaryText,
+                color = txtColor,
+                fontSize = if (key.primaryText.length > 4) 10.5.sp else if (key.primaryText.length > 2) 12.sp else if (key.isNumber || key.isOperator || key.isEquals) 20.sp else 14.sp,
+                fontWeight = if (key.isNumber || key.isOperator || key.isEquals) FontWeight.Bold else FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+        }
 
         Spacer(modifier = Modifier.height(2.dp))
     }

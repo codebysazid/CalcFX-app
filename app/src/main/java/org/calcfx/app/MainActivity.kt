@@ -49,16 +49,25 @@ fun CalculatorMainScreen(viewModel: CalculatorViewModel) {
 
     Scaffold(
         topBar = {
+            val accent = LocalAppAccent.current
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = "CalcFX",
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.SansSerif,
-                        fontSize = 20.sp,
-                        color = AmoledTextPrimary,
-                        letterSpacing = 0.5.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "CalcFX",
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.SansSerif,
+                            fontSize = 21.sp,
+                            color = AmoledTextPrimary,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = " •",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 21.sp,
+                            color = accent
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = AmoledBlack,
@@ -89,6 +98,7 @@ fun CalculatorMainScreen(viewModel: CalculatorViewModel) {
                 hasMemory = state.hasMemoryValue,
                 onSeekCursor = { pos -> viewModel.setCursor(pos) },
                 onPasteText = { clip -> viewModel.insertText(clip) },
+                onSwipeDelete = { viewModel.onKeyPress("DEL") },
                 modifier = Modifier.fillMaxWidth().height(158.dp)
             )
 
