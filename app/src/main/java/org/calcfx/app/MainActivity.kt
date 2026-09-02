@@ -99,7 +99,7 @@ fun CalculatorMainScreen(viewModel: CalculatorViewModel) {
                 onSeekCursor = { pos -> viewModel.setCursor(pos) },
                 onPasteText = { clip -> viewModel.insertText(clip) },
                 onSwipeDelete = { viewModel.onKeyPress("DEL") },
-                modifier = Modifier.fillMaxWidth().height(158.dp)
+                modifier = Modifier.fillMaxWidth().height(125.dp)
             )
 
             // --- 2. Complete Casio FX Keypad Grid with 3-Dot Menu next to MODE ---

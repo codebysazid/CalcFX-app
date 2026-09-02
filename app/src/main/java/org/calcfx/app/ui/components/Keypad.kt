@@ -54,7 +54,7 @@ fun Keypad(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // --- 1. Minimalist Top Control Strip (6 items) ---
         MinimalistControlStrip(
@@ -64,7 +64,7 @@ fun Keypad(
             onOpenMoreMenu = onOpenMoreMenu,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.85f)
+                .weight(0.68f)
         )
 
         // --- 2. Complete Scientific Function Block (4 Rows, 6 Columns) ---
@@ -84,7 +84,7 @@ fun Keypad(
             onKeyPress = onKeyPress,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(4.8f)
+                .weight(4.4f)
         )
     }
 }
@@ -101,7 +101,7 @@ private fun MinimalistControlStrip(
 
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 1. SHIFT
@@ -210,9 +210,9 @@ private fun MinimalPillButton(
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(if (isActive) activeBg else inactiveBg)
-            .border(BorderStroke(0.8.dp, borderColor), RoundedCornerShape(14.dp))
+            .border(BorderStroke(0.8.dp, borderColor), RoundedCornerShape(12.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -243,9 +243,9 @@ private fun MinimalNavButton(
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(AmoledFunctionKey)
-            .border(BorderStroke(0.8.dp, AmoledCardBorder), RoundedCornerShape(14.dp))
+            .border(BorderStroke(0.8.dp, AmoledCardBorder), RoundedCornerShape(12.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -302,7 +302,7 @@ private fun ScientificFunctionSection(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         KeyRowFlex(row1, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
         KeyRowFlex(row2, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = true)
@@ -349,7 +349,7 @@ private fun NumericPadSection(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(7.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         KeyRowFlex(row1, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
         KeyRowFlex(row2, isShiftActive, isAlphaActive, onKeyPress, modifier = Modifier.weight(1f), isScientific = false)
@@ -369,10 +369,10 @@ private fun KeyRowFlex(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(if (isScientific) 6.dp else 7.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (isScientific) 6.dp else 8.dp)
     ) {
         for (k in keys) {
-            MinimalCalculatorButton(
+            MinimalCalculatorKeyCell(
                 key = k,
                 isShiftActive = isShiftActive,
                 isAlphaActive = isAlphaActive,
@@ -385,7 +385,7 @@ private fun KeyRowFlex(
 }
 
 @Composable
-private fun MinimalCalculatorButton(
+private fun MinimalCalculatorKeyCell(
     key: KeyModel,
     isShiftActive: Boolean,
     isAlphaActive: Boolean,
@@ -424,65 +424,58 @@ private fun MinimalCalculatorButton(
         else -> AmoledTextSecondary
     }
 
-    // High-end squircle corner curves: 20dp for numeric keys, 14dp for scientific keys
-    val cornerRadius = if (key.isNumber || key.isOperator || key.isEquals || key.isActionAc || key.isActionDel) 20.dp else 14.dp
+    // High-end squircle corner curves
+    val cornerRadius = if (key.isNumber || key.isOperator || key.isEquals || key.isActionAc || key.isActionDel) 16.dp else 12.dp
 
     Column(
-        modifier = modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .semantics { contentDescription = key.primaryText }
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(bg)
-            .border(BorderStroke(0.6.dp, AmoledCardBorder), RoundedCornerShape(cornerRadius))
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(horizontal = 3.dp, vertical = 2.dp),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Shift / Alpha subtle indicator hints
-        if (key.shiftText != null || key.alphaText != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 3.dp, vertical = 1.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = key.shiftText ?: "",
-                    color = if (isShiftActive) AccentGold else AccentGold.copy(alpha = 0.90f),
-                    fontSize = 8.sp,
-                    fontWeight = if (isShiftActive) FontWeight.Black else FontWeight.Bold,
-                    maxLines = 1
-                )
-                Text(
-                    text = key.alphaText ?: "",
-                    color = if (isAlphaActive) AccentCoral else AccentCoral.copy(alpha = 0.90f),
-                    fontSize = 8.sp,
-                    fontWeight = if (isAlphaActive) FontWeight.Black else FontWeight.Bold,
-                    maxLines = 1
-                )
-            }
-        } else {
-            Spacer(modifier = Modifier.height(4.dp))
+        // --- 1. Secondary Function Labels Positioned IN THE GAP ABOVE the Button ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp, vertical = 1.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = key.shiftText ?: "",
+                color = if (isShiftActive) AccentGold else AccentGold.copy(alpha = 0.85f),
+                fontSize = 8.sp,
+                fontWeight = if (isShiftActive) FontWeight.Black else FontWeight.Bold,
+                maxLines = 1
+            )
+            Text(
+                text = key.alphaText ?: "",
+                color = if (isAlphaActive) AccentCoral else AccentCoral.copy(alpha = 0.85f),
+                fontSize = 8.sp,
+                fontWeight = if (isAlphaActive) FontWeight.Black else FontWeight.Bold,
+                maxLines = 1
+            )
         }
 
-        // Primary Label perfectly vertically centered
+        // --- 2. Clean, Spacious Squircle Button with Centered Primary Label ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .semantics { contentDescription = key.primaryText }
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(bg)
+                .border(BorderStroke(0.6.dp, AmoledCardBorder), RoundedCornerShape(cornerRadius))
+                .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = key.primaryText,
                 color = txtColor,
-                fontSize = if (key.primaryText.length > 4) 10.5.sp else if (key.primaryText.length > 2) 12.sp else if (key.isNumber || key.isOperator || key.isEquals) 20.sp else 14.sp,
+                fontSize = if (key.primaryText.length > 4) 11.5.sp else if (key.primaryText.length > 2) 13.sp else if (key.isNumber || key.isOperator || key.isEquals) 22.sp else 15.sp,
                 fontWeight = if (key.isNumber || key.isOperator || key.isEquals) FontWeight.Bold else FontWeight.Medium,
                 textAlign = TextAlign.Center
             )
         }
-
-        Spacer(modifier = Modifier.height(2.dp))
     }
 }
