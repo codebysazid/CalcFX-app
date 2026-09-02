@@ -1,0 +1,259 @@
+package org.calcfx.app.ui.components
+
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.calcfx.app.engine.AngleUnit
+import org.calcfx.app.engine.CalculatorMode
+import org.calcfx.app.ui.theme.*
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun DisplayScreen(
+    expression: String,
+    cursorPosition: Int,
+    resultPreview: String,
+    formattedResult: String,
+    isShiftActive: Boolean,
+    isAlphaActive: Boolean,
+    isHypActive: Boolean,
+    angleUnit: AngleUnit,
+    mode: CalculatorMode,
+    hasMemory: Boolean,
+    onSeekCursor: (Int) -> Unit = {},
+    onPasteText: (String) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val accent = LocalAppAccent.current
+    var showContextMenu by remember { mutableStateOf(false) }
+
+    // Auto-scroll input toward cursor position
+    LaunchedEffect(expression, cursorPosition) {
+        // Estimate pixel offset based on cursor position ratio
+        val ratio = if (expression.isNotEmpty()) cursorPosition.toFloat() / expression.length else 1f
+        val targetScroll = (scrollState.maxValue * ratio).toInt()
+        scrollState.scrollTo(targetScroll)
+    }
+
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(24.dp))
+                .background(AmoledDisplayBg)
+                .border(1.dp, AmoledDisplayBorder, RoundedCornerShape(24.dp))
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = { showContextMenu = true }
+                )
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // --- 1. Top Minimal Status Badges ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isShiftActive) MinimalPill("SHIFT", AccentGold)
+                    if (isAlphaActive) MinimalPill("ALPHA", AccentCoral)
+                    if (isHypActive) MinimalPill("HYP", accent)
+                    if (hasMemory) MinimalPill("M", AccentBlue)
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val angleLabel = when (angleUnit) {
+                        AngleUnit.DEGREE -> "DEG"
+                        AngleUnit.RADIAN -> "RAD"
+                        AngleUnit.GRADIAN -> "GRA"
+                    }
+                    Text(
+                        text = angleLabel,
+                        color = accent,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                    if (mode != CalculatorMode.COMP) {
+                        Text(
+                            text = mode.name,
+                            color = AccentPurple,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // --- 2. Minimalist Formula Input Line ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState)
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                val annotatedText = buildAnnotatedString {
+                    val text = if (expression.isEmpty()) "" else expression
+                    val pos = cursorPosition.coerceIn(0, text.length)
+
+                    append(text.substring(0, pos))
+                    // Glowing dynamic accent cursor
+                    withStyle(
+                        style = SpanStyle(
+                            background = accent.copy(alpha = 0.45f),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
+                        append(if (pos < text.length) text[pos].toString() else " ")
+                    }
+                    if (pos < text.length) {
+                        append(text.substring(pos + 1))
+                    }
+                }
+
+                @Suppress("DEPRECATION")
+                ClickableText(
+                    text = annotatedText,
+                    onClick = { offset -> onSeekCursor(offset) },
+                    style = TextStyle(
+                        color = AmoledInputText,
+                        fontSize = 26.sp,
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Normal,
+                        lineHeight = 32.sp
+                    )
+                )
+            }
+
+            // --- 3. Prominent Minimalist Result Display in Dynamic Accent ---
+            val displayOutput = formattedResult.ifEmpty { resultPreview }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = {
+                            if (displayOutput.isNotBlank() && displayOutput != "0") {
+                                clipboardManager.setText(AnnotatedString(displayOutput))
+                                Toast.makeText(context, "Copied $displayOutput", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onLongClick = { showContextMenu = true }
+                    ),
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = displayOutput.ifEmpty { "0" },
+                    color = if (displayOutput.contains("ERROR")) AccentCoral else accent,
+                    fontSize = 38.sp,
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End,
+                    maxLines = 1
+                )
+            }
+        }
+
+        // Long-Press Context Menu
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+            modifier = Modifier.background(AmoledSurface)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Copy Result", color = AmoledTextPrimary) },
+                onClick = {
+                    showContextMenu = false
+                    val res = formattedResult.ifEmpty { resultPreview }
+                    if (res.isNotBlank()) {
+                        clipboardManager.setText(AnnotatedString(res))
+                        Toast.makeText(context, "Result copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Copy Expression", color = AmoledTextPrimary) },
+                onClick = {
+                    showContextMenu = false
+                    if (expression.isNotBlank()) {
+                        clipboardManager.setText(AnnotatedString(expression))
+                        Toast.makeText(context, "Expression copied", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Paste", color = accent) },
+                onClick = {
+                    showContextMenu = false
+                    val clip = clipboardManager.getText()?.text
+                    if (!clip.isNullOrBlank()) {
+                        onPasteText(clip)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MinimalPill(
+    text: String,
+    color: Color
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(color.copy(alpha = 0.15f))
+            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
